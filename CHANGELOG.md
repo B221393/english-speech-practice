@@ -1,5 +1,12 @@
 # 変更履歴
 
+## 2026-10-22 目的・進捗の更新とカメラ価格・倍率表記の簡素化
+
+- 4ページ目の見出しを「Purpose of this study」とし、測定系設計・組立、測定ソフト、変位アルゴリズム、工作機械準備の完了4項目と、不確かさ評価・熱変形測定の未着手2項目を対比構造で反映。
+- 3ページ目の原稿からカメラ価格の除外注記（This camera price does not include the optics or the computer.）を削除し、カメラ自体の安価性（A major advantage is that the camera itself is low cost.）を強調する簡潔な文言へ統一。スライド面からも不要なPC・光学系注記を削除。
+- 8、11、12、13、14ページおよび原稿内の過剰な小数桁数（0.856666）を整理し、実用的な工学表記（0.857 µm/px）へ統一。
+- 公開版（GitHub Pages）およびローカル原稿、PPTX正本の全ノートを完全同期。
+
 ## 2026-10-22
 
 - ローカルの英語音声練習HTMLをGitHub Pages用に公開。
