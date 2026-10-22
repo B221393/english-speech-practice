@@ -4,8 +4,9 @@
 
 公開URL: https://b221393.github.io/english-speech-practice/
 
-- 全24ページ、143文の英文と日本語を表示します。
-- 「原稿を再生」または各文の「再生」をタップして聞きます。速度調整・繰り返しにも対応します。本編14ページ、参考10ページです。19〜24は仕様補足です。
+- 全24ページ、142文の英文と日本語を表示します。
+- 「最初から通し再生」で本編1〜14ページを続けて聞けます。参考ページは飛ばし、日英表示が自動で切り替わります。一時停止・再開・停止と進行表示に対応します。
+- 「このページを再生」または各文の「再生」でも聞けます。速度調整・繰り返しにも対応します。本編14ページ、参考10ページです。19〜24は仕様補足です。
 - 難語・頻出語33語をクリックすると読み上げます。
 - 対応ブラウザでは録音・音声保存・任意の英語文字起こし・練習記録CSVを利用できます。
 
@@ -24,3 +25,5 @@
 - [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
 - [MDN SpeechSynthesis](https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesis)
 - [MDN SpeechRecognition](https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition)
+
+通し再生中に録音を開始すると、記録と比較の対象は本編全体になります。冒頭のGood morningは省いています。
