@@ -78,7 +78,7 @@ footer{font-size:10.5px;padding:2px 10px;background:#fff;color:#94a3b8;border-to
 <div class="status" id="status" role="status" aria-live="polite">文・ページ・通し再生を選んでください。</div>
 <main class="work">
 <section id="practice" class="practice" role="tabpanel" aria-labelledby="practiceTab">
-<article class="panel"><h2 id="title"></h2><div class="controls"><button id="runAll" class="primary">最初から通し再生</button><button id="read">このページを再生</button><button id="pause">一時停止</button><button id="stopSpeech">再生停止</button><label><input type="checkbox" id="loop">選んだ文を繰り返す</label></div><div id="runProgressWrap" class="presentation-progress" hidden><progress id="runProgress" value="0" max="1" aria-label="通し再生の進行"></progress><span id="runLabel" aria-live="polite"></span></div><div id="sentences"></div><details><summary>日本語の説明と話すときの補足</summary><div id="japanese" class="ja"></div><p id="cue" class="muted"></p></details></article>
+<article class="panel"><h2 id="title"></h2><div class="controls"><button id="runAll" class="primary">最初から通し再生</button><button id="playFromHere">ここから最後まで再生</button><button id="read">このページを再生</button><button id="pause">一時停止</button><button id="stopSpeech">再生停止</button><label><input type="checkbox" id="loop">選んだ文を繰り返す</label></div><div id="runProgressWrap" class="presentation-progress" hidden><progress id="runProgress" value="0" max="1" aria-label="通し再生の進行"></progress><span id="runLabel" aria-live="polite"></span></div><div id="sentences"></div><details><summary>日本語の説明と話すときの補足</summary><div id="japanese" class="ja"></div><p id="cue" class="muted"></p></details></article>
 
 </section>
 <section id="vocab" class="vocab" role="tabpanel" aria-labelledby="vocabTab" hidden><div class="controls"><h2>難語・頻出語</h2><input id="filter" type="search" placeholder="単語・日本語で絞り込み" aria-label="単語検索"><label><input type="checkbox" id="currentOnly">現在のページだけ</label></div><p class="muted">単語をクリックすると英語で読み上げます。大文字の部分が主なアクセントです。原稿中の出現数とページも示しています。</p><div id="words" class="vocab-grid"></div></section>
@@ -90,7 +90,7 @@ footer{font-size:10.5px;padding:2px 10px;background:#fff;color:#94a3b8;border-to
 'use strict';
 const DATA=JSON.parse(document.getElementById('practiceData').textContent);
 const $=id=>document.getElementById(id), synth=window.speechSynthesis;
-let pageIndex=0, voices=[], utterance=null, speakToken=0, spoken=false, activeSentence=-1, playbackMode='idle';
+let pageIndex=0, voices=[], utterance=null, speakToken=0, activeSentence=-1, playbackMode='idle', isPaused=false, pausedResumeCallback=null;
 const status=message=>$('status').textContent=message;
 const current=()=>DATA.slides[pageIndex];
 const segmenter=typeof Intl.Segmenter==='function'?new Intl.Segmenter('en',{granularity:'sentence'}):null;
@@ -100,38 +100,131 @@ const presentationSlides=()=>DATA.slides.map((slide,index)=>({slide,index})).fil
 function setTab(name){for(const id of ['practice','vocab']){$(id).hidden=id!==name;$(id+'Tab').setAttribute('aria-selected',String(id===name));}if(name==='vocab')renderWords();}
 $('practiceTab').onclick=()=>setTab('practice');$('vocabTab').onclick=()=>setTab('vocab');
 function loadVoices(){if(!synth)return;voices=synth.getVoices().filter(v=>/^en(?:-|_)/i.test(v.lang));const old=$('voice').value;$('voice').replaceChildren();if(!voices.length){const o=new Option('English (browser default)','');$('voice').add(o);}else voices.forEach((v,i)=>$('voice').add(new Option(v.name+' / '+v.lang,String(i))));if([...$('voice').options].some(o=>o.value===old))$('voice').value=old;}
-if(synth){loadVoices();synth.addEventListener('voiceschanged',loadVoices);}else{for(const id of ['runAll','read','pause','stopSpeech'])$(id).disabled=true;status('このブラウザは読み上げに対応していません。原稿は表示できます。');}
+if(synth){loadVoices();synth.addEventListener('voiceschanged',loadVoices);}else{for(const id of ['runAll','playFromHere','read','pause','stopSpeech']){const el=$(id);if(el)el.disabled=true;}status('このブラウザは読み上げに対応していません。原稿は表示できます。');}
 function highlight(){document.querySelectorAll('.sentence').forEach((el,i)=>el.classList.toggle('active',i===activeSentence));if(activeSentence>=0){const active=document.querySelector('.sentence.active');active?.scrollIntoView({block:'nearest',behavior:'auto'});}}
-function stopSpeech(){speakToken++;spoken=false;activeSentence=-1;utterance=null;playbackMode='idle';if(synth)synth.cancel();$('pause').textContent='一時停止';$('runProgressWrap').hidden=true;highlight();refreshControls();}
-function speak(text,index=-1,done=()=>{}){if(!synth)return status('読み上げは非対応です。');const token=speakToken;utterance=new SpeechSynthesisUtterance(text);utterance.lang='en-US';utterance.rate=Number($('rate').value);if(voices[Number($('voice').value)])utterance.voice=voices[Number($('voice').value)];activeSentence=index;spoken=true;highlight();utterance.onend=()=>{if(token!==speakToken)return;done();};utterance.onerror=e=>{if(token!==speakToken||e.error==='canceled'||e.error==='interrupted')return;speakToken++;const wasRun=playbackMode==='presentation';spoken=false;activeSentence=-1;playbackMode='idle';utterance=null;highlight();refreshControls();if(wasRun)$('runLabel').textContent='音声エラーで通し再生を停止しました';status('読み上げエラー: '+e.error);};synth.speak(utterance);}
-function playSentence(i){stopSpeech();const token=speakToken;const run=()=>{if(token!==speakToken)return;speak(sentences()[i],i,()=>{if($('loop').checked){setTimeout(run,600);}else{spoken=false;activeSentence=-1;highlight();}});};run();}
-function playAll(){stopSpeech();const list=sentences(),token=speakToken;let i=0;const run=()=>{if(token!==speakToken)return;if(i>=list.length){spoken=false;activeSentence=-1;highlight();return;}const index=i++;speak(list[index],index,run);};run();}
-
-function playPresentation(){
-  if(!synth)return status('このブラウザは読み上げ非対応です。');
-  stopSpeech();setTab('practice');playbackMode='presentation';
-  const pages=presentationSlides();
-  const queue=pages.flatMap((item,pageOrder)=>sentenceList(item.slide).map((text,sentenceIndex)=>({text,sentenceIndex,pageIndex:item.index,pageOrder})));
-  const token=speakToken;let position=0;
-  $('runProgressWrap').hidden=false;$('runProgress').max=queue.length;$('runProgress').value=0;
+function stopSpeech(){speakToken++;isPaused=false;pausedResumeCallback=null;activeSentence=-1;utterance=null;playbackMode='idle';if(synth)synth.cancel();const p=$('pause');if(p)p.textContent='一時停止';$('runProgressWrap').hidden=true;highlight();refreshControls();}
+function speak(text,index=-1,done=()=>{}){
+  if(!synth)return status('読み上げは非対応です。');
+  const token=speakToken;
+  activeSentence=index;
+  highlight();
+  utterance=new SpeechSynthesisUtterance(text);
+  utterance.lang='en-US';
+  utterance.rate=Number($('rate').value);
+  if(voices[Number($('voice').value)])utterance.voice=voices[Number($('voice').value)];
+  utterance.onend=()=>{
+    if(token!==speakToken||isPaused)return;
+    done();
+  };
+  utterance.onerror=e=>{
+    if(token!==speakToken||isPaused||e.error==='canceled'||e.error==='interrupted')return;
+    speakToken++;
+    const wasRun=playbackMode==='presentation';
+    playbackMode='idle';
+    activeSentence=-1;
+    utterance=null;
+    highlight();
+    refreshControls();
+    if(wasRun)$('runLabel').textContent='音声エラーで通し再生を停止しました';
+    status('読み上げエラー: '+e.error);
+  };
+  synth.speak(utterance);
+}
+function togglePause(){
+  if(!synth||playbackMode==='idle')return;
+  if(isPaused){
+    isPaused=false;
+    $('pause').textContent='一時停止';
+    status('再生を再開しました。');
+    if(synth.paused){try{synth.resume();}catch(_){}}
+    if(pausedResumeCallback){const cb=pausedResumeCallback;pausedResumeCallback=null;cb();}
+  }else{
+    isPaused=true;
+    $('pause').textContent='再開';
+    status('一時停止中。「再開」を押すと続きから再生します。');
+    try{synth.pause();}catch(_){}
+    if(synth)synth.cancel();
+  }
+}
+function playSentence(i){
+  stopSpeech();
+  const token=speakToken;
+  playbackMode='sentence';
   const run=()=>{
     if(token!==speakToken)return;
-    if(position>=queue.length){
-      spoken=false;activeSentence=-1;playbackMode='idle';highlight();refreshControls();
-      $('runProgress').value=queue.length;$('runLabel').textContent=`本編${pages.length}ページ / ${queue.length}文 再生終了`;
-      status(`本編${pages.length}ページの通し再生が終わりました。`);return;
-    }
-    const item=queue[position++];
-    if(pageIndex!==item.pageIndex){pageIndex=item.pageIndex;renderPage({keepSpeech:true});}
-    $('runProgress').value=position;$('runLabel').textContent=`本編 ${item.pageOrder+1}/${pages.length}ページ / ${position}/${queue.length}文`;
-    status(`通し再生中: ${item.pageOrder+1}/${pages.length}ページ。一時停止・再開・停止ができます。`);
-    speak(item.text,item.sentenceIndex,run);
+    if(isPaused){pausedResumeCallback=run;return;}
+    pausedResumeCallback=run;
+    speak(sentences()[i],i,()=>{
+      if($('loop').checked){setTimeout(run,600);}
+      else{stopSpeech();}
+    });
   };
   run();
 }
-$('runAll').onclick=playPresentation;
-
-$('read').onclick=playAll;$('stopSpeech').onclick=stopSpeech;$('pause').onclick=()=>{if(!synth||!spoken)return;if(synth.paused){synth.resume();$('pause').textContent='一時停止';}else{synth.pause();$('pause').textContent='再開';}};
+function playAll(){
+  stopSpeech();
+  const list=sentences(), token=speakToken;
+  playbackMode='page';
+  let i=0;
+  const run=()=>{
+    if(token!==speakToken)return;
+    if(isPaused){pausedResumeCallback=run;return;}
+    if(i>=list.length){stopSpeech();return;}
+    const index=i;
+    pausedResumeCallback=run;
+    speak(list[index],index,()=>{
+      i++;
+      run();
+    });
+  };
+  run();
+}
+function playPresentation({fromCurrent=false}={}){
+  if(!synth)return status('このブラウザは読み上げ非対応です。');
+  stopSpeech();
+  setTab('practice');
+  playbackMode='presentation';
+  const allPages=presentationSlides();
+  const pages=fromCurrent?allPages.filter(item=>item.index>=pageIndex):allPages;
+  if(!pages.length)return status('再生対象のページがありません。');
+  const queue=pages.flatMap((item,pageOrder)=>sentenceList(item.slide).map((text,sentenceIndex)=>({text,sentenceIndex,pageIndex:item.index,pageOrder:fromCurrent?(allPages.findIndex(p=>p.index===item.index)):pageOrder})));
+  const token=speakToken;
+  let position=0;
+  $('runProgressWrap').hidden=false;
+  $('runProgress').max=queue.length;
+  $('runProgress').value=0;
+  const run=()=>{
+    if(token!==speakToken)return;
+    if(isPaused){pausedResumeCallback=run;return;}
+    if(position>=queue.length){
+      stopSpeech();
+      $('runProgressWrap').hidden=false;
+      $('runProgress').value=queue.length;
+      $('runLabel').textContent=`再生終了 (${queue.length}文)`;
+      status(`通し再生が終了しました。`);
+      return;
+    }
+    const item=queue[position];
+    pausedResumeCallback=run;
+    if(pageIndex!==item.pageIndex){
+      pageIndex=item.pageIndex;
+      renderPage({keepSpeech:true});
+    }
+    $('runProgress').value=position+1;
+    $('runLabel').textContent=`${item.pageOrder+1}/${allPages.length}ページ (${position+1}/${queue.length}文)`;
+    status(`通し再生中: ${item.pageOrder+1}ページ目。一時停止・再開・停止ができます。`);
+    speak(item.text,item.sentenceIndex,()=>{
+      position++;
+      run();
+    });
+  };
+  run();
+}
+$('runAll').onclick=()=>playPresentation({fromCurrent:false});
+if($('playFromHere'))$('playFromHere').onclick=()=>playPresentation({fromCurrent:true});
+$('read').onclick=playAll;
+$('stopSpeech').onclick=stopSpeech;
+$('pause').onclick=togglePause;
 function renderPage({keepSpeech=false}={}){
   if(!keepSpeech)stopSpeech();
   const s=current();$('title').textContent=`${s.page}. ${s.title}`;$('page').value=String(pageIndex);
@@ -158,7 +251,7 @@ $('filter').oninput=renderWords;$('currentOnly').onchange=renderWords;
 
 function refreshControls(){
   $('prev').disabled=pageIndex===0;$('next').disabled=pageIndex===DATA.slides.length-1;
-  for(const id of ['runAll','read','pause','stopSpeech'])$(id).disabled=!synth;
+  for(const id of ['runAll','playFromHere','read','pause','stopSpeech'])$(id).disabled=!synth;
 }
 const requestedPage=Number(new URL(location.href).searchParams.get('page'));
 const requestedIndex=DATA.slides.findIndex(s=>s.page===requestedPage);
