@@ -1,5 +1,17 @@
 # 変更履歴
 
+## 2026-10-23 小数数値の英語読み上げ（zero point ...）の全原稿・音声同期
+
+- 本人指示（「0.856738 micrometers per pixel gives 99.91コメントのほうもzeropointって呼び方を振ってほしいちょっと考えるのがめんどくさいからね」）に基づき、発表原稿およびスライドノート・音声練習サイトの小数数値をすべて英単語表記（zero point ...）へ更新。
+- スピーチ本番時の数値読み上げ変換の思考負荷を完全ゼロ化：
+  - スライド8（XY変位換算）: `zero point eight five six seven three eight micrometers per pixel gives ninety-nine point nine one micrometers`
+  - スライド12（画素倍率）: `zero point eight five six seven three eight micrometers per pixel`、範囲 `zero point eight five six seven two one to zero point eight five six seven five two micrometers per pixel`
+  - スライド13（XY変位結果）: 平均倍率 `zero point eight five six seven three eight micrometers per pixel`、最大指令差 `zero point seven eight micrometers`
+  - スライド14（総括）: RMSE `zero point four one micrometers`、Z換算 `ninety-eight point two one micrometers equivalent`
+  - スライド15（予備数値）: 暫定平均倍率・RMSE・Z換算の数値をすべて英単語展開。
+- 日本語ノート・コメント側にも `[英語読み: 0.856738 = zero point eight five six seven three eight / 99.91 = ninety-nine point nine one]` などの明示的読み案内を完備。
+- PPTX正本（en.pptx / ja.pptx）、Word原稿（docx）、確認用HTML、およびWeb音声練習サイト（GitHub Pages）の全媒体で完全同期。
+
 ## 2026-10-23 スライド6の校正10件目・9件平均記述の削除およびフォント統一同期
 
 - 本人指示に従い、スライド6の音声練習原稿から不要な除外注釈「この例は校正10件目です」「結果の換算には、先頭9件の平均倍率を使います」（および対応英語文）を削除。
